@@ -69,7 +69,7 @@ const FloorRegistrationForm = ({ onSubmit }) => {
     setSubmitting(true);
     try {
       await onSubmit(cleanedFloors); // pass array of floors to parent
-      toast.success("Floors added successfully ✅");
+      toast.success("Floors added successfully");
       setSelectedBuilding(null);
       setFloors([]);
     } catch (err) {
@@ -85,7 +85,7 @@ const FloorRegistrationForm = ({ onSubmit }) => {
       onSubmit={handleSubmit}
       className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md"
     >
-      <h2 className="text-2xl font-bold mb-4 text-center">Add Floors</h2>
+      <h2 className="text-2xl font-bold mb-4 text-center">Floor and sensor info</h2>
 
       {/* Building Dropdown */}
       <div className="mb-4">

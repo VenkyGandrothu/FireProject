@@ -119,7 +119,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to create relation");
 
-      toast.success("Customer linked to building successfully ✅");
+      toast.success("Customer linked to building successfully");
       setFormData({
         customer_id: "",
         building_id: "",

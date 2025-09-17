@@ -1,17 +1,13 @@
-// src/Pages/HomePage.js
-
-// Import forms
 import CustomerRegistrationForm from "../Components/Forms/CustomerRegistrationForm";
 import BuildingRegistrationForm from "../Components/Forms/BuildingRegistrationForm";
 import FloorRegistrationForm from "../Components/Forms/FloorRegistrationForm";
-import CustomerBuildingForm from "../Components/Forms/CustomerBuildingForm"; // ✅ new
+import CustomerBuildingForm from "../Components/Forms/CustomerBuildingForm";
+import AddSensorForm from "../Components/Forms/PhysicalSensorRegistrationForm";
 
-// Import Toastify for notifications
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function HomePage() {
-  // Function to submit customer data to backend
   const submitCustomer = async (data) => {
     const res = await fetch("http://localhost:5000/api/customers/register", {
       method: "POST",
@@ -19,13 +15,10 @@ function HomePage() {
       body: JSON.stringify(data),
     });
     const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.message || "Failed to save customer");
-    }
+    if (!res.ok) throw new Error(json.message || "Failed to save customer");
     return json;
   };
 
-  // Function to submit building data to backend
   const submitBuilding = async (data) => {
     const res = await fetch("http://localhost:5000/api/buildings/register", {
       method: "POST",
@@ -37,7 +30,6 @@ function HomePage() {
     return json;
   };
 
-  // Function to submit floor data to backend
   const submitFloor = async (data) => {
     const res = await fetch("http://localhost:5000/api/floors/register", {
       method: "POST",
@@ -49,7 +41,6 @@ function HomePage() {
     return json;
   };
 
-  // ✅ Function to submit customer-building relation
   const submitCustomerBuilding = async (data) => {
     const res = await fetch("http://localhost:5000/api/customer-building", {
       method: "POST",
@@ -61,9 +52,44 @@ function HomePage() {
     return json;
   };
 
+  // ✅ Single sensor
+  const submitSensor = async (payload) => {
+    const res = await fetch("http://localhost:5000/api/sensors/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        floorId: payload.floorId,
+        ...payload.sensors[0], // take the first one
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || "Failed to save sensor");
+    return json;
+  };
+
+  // ✅ Multiple sensors
+  const submitSensorsBulk = async (payload) => {
+    const res = await fetch("http://localhost:5000/api/sensors/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || "Failed to save sensors");
+    return json;
+  };
+
+  // ✅ Smart wrapper: decide single vs bulk
+  const handleSensorSubmit = async (payload) => {
+    if (payload.sensors.length === 1) {
+      return submitSensor(payload);
+    } else {
+      return submitSensorsBulk(payload);
+    }
+  };
+
   return (
     <>
-      {/* Container for registration forms side by side */}
       <div
         style={{
           display: "flex",
@@ -74,28 +100,24 @@ function HomePage() {
           marginTop: "20px",
         }}
       >
-        {/* Customer Registration Form */}
         <div style={{ flex: 1, minWidth: "300px" }}>
           <CustomerRegistrationForm onSubmit={submitCustomer} />
         </div>
-
-        {/* Building Registration Form */}
         <div style={{ flex: 1, minWidth: "300px" }}>
           <BuildingRegistrationForm onSubmit={submitBuilding} />
         </div>
-
-        {/* Floor Registration Form */}
-        <div style={{ flex: 1, minWidth: "300px" }}>
-          <FloorRegistrationForm onSubmit={submitFloor} />
-        </div>
-
-        {/* ✅ Customer-Building Linking Form */}
         <div style={{ flex: 1, minWidth: "300px" }}>
           <CustomerBuildingForm onSubmit={submitCustomerBuilding} />
         </div>
+        <div style={{ flex: 1, minWidth: "300px" }}>
+          <FloorRegistrationForm onSubmit={submitFloor} />
+        </div>
+        <div style={{ flex: 1, minWidth: "300px" }}>
+          {/* ✅ Smart handler passed */}
+          <AddSensorForm onSubmit={handleSensorSubmit} />
+        </div>
       </div>
 
-      {/* ✅ Toast container at root level */}
       <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
