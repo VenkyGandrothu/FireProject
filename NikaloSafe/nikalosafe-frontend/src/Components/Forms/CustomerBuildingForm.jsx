@@ -71,7 +71,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
       return;
     }
 
-    // ✅ Duplicate check before submit
+    //Duplicate check before submit
     try {
       const resCheck = await fetch("http://localhost:5000/api/customer-building");
       const data = await resCheck.json();

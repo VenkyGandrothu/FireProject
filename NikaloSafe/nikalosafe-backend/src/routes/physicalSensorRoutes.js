@@ -4,6 +4,7 @@ import {
   registerSensorsBulk,
   getAllSensors,
   getSensorById,
+  getSensorsByFloor,
   deleteSensor,
 } from "../controllers/physicalSensorController.js";
 
@@ -23,5 +24,8 @@ router.get("/:id", getSensorById);
 
 // Delete sensor
 router.delete("/:id", deleteSensor);
+
+// Get sensors by floor
+router.get("/floor/:floorId", getSensorsByFloor);
 
 export default router;

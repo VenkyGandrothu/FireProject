@@ -37,7 +37,7 @@ export default function PhysicalSensorRegistrationForm({ onSubmit }) {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/floors?buildingId=${building.building_id}`
+        `http://localhost:5000/api/floors/building/${building.building_id}`
       );
       const data = await res.json();
       const sortedFloors = (data.floors || data).sort(
@@ -49,6 +49,7 @@ export default function PhysicalSensorRegistrationForm({ onSubmit }) {
       toast.error("Failed to load floors");
     }
   };
+
 
   // Handle floor selection
   const handleFloorChange = (e) => {
