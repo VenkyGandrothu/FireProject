@@ -1,10 +1,12 @@
+// src/Pages/HomePage.jsx
 import CustomerRegistrationForm from "../Components/Forms/CustomerRegistrationForm";
 import BuildingRegistrationForm from "../Components/Forms/BuildingRegistrationForm";
 import FloorRegistrationForm from "../Components/Forms/FloorRegistrationForm";
 import CustomerBuildingForm from "../Components/Forms/CustomerBuildingForm";
 import AddSensorForm from "../Components/Forms/PhysicalSensorRegistrationForm";
+import VirtualSensorRegistrationForm from "../Components/Forms/VirtualSensorRegistrationForm";
 
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 function HomePage() {
@@ -48,11 +50,12 @@ function HomePage() {
       body: JSON.stringify(data),
     });
     const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to link customer and building");
+    if (!res.ok)
+      throw new Error(json.message || "Failed to link customer and building");
     return json;
   };
 
-  // ✅ Single sensor
+  // Single sensor
   const submitSensor = async (payload) => {
     const res = await fetch("http://localhost:5000/api/sensors/register", {
       method: "POST",
@@ -67,7 +70,7 @@ function HomePage() {
     return json;
   };
 
-  // ✅ Multiple sensors
+  // Multiple sensors
   const submitSensorsBulk = async (payload) => {
     const res = await fetch("http://localhost:5000/api/sensors/bulk", {
       method: "POST",
@@ -79,7 +82,24 @@ function HomePage() {
     return json;
   };
 
-  // ✅ Smart wrapper: decide single vs bulk
+  //  Virtual Sensors (handles single + bulk)
+  const submitVirtualSensor = async (data) => {
+    const endpoint = Array.isArray(data)
+      ? "http://localhost:5000/api/virtual-sensors/bulk"
+      : "http://localhost:5000/api/virtual-sensors/register";
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok)
+      throw new Error(json.message || "Failed to save virtual sensor(s)");
+    return json;
+  };
+
+  //  Smart wrapper: decide single vs bulk
   const handleSensorSubmit = async (payload) => {
     if (payload.sensors.length === 1) {
       return submitSensor(payload);
@@ -113,8 +133,12 @@ function HomePage() {
           <FloorRegistrationForm onSubmit={submitFloor} />
         </div>
         <div style={{ flex: 1, minWidth: "300px" }}>
-          {/* ✅ Smart handler passed */}
+          {/* Smart handler passed */}
           <AddSensorForm onSubmit={handleSensorSubmit} />
+        </div>
+        <div style={{ flex: 1, minWidth: "300px" }}>
+          {/* Virtual Sensors mounted here */}
+          <VirtualSensorRegistrationForm onSubmit={submitVirtualSensor} />
         </div>
       </div>
 

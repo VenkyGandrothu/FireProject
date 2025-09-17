@@ -96,3 +96,18 @@ export const deleteSensor = async (req, res) => {
     res.status(500).json({ message: "Failed to delete sensor" });
   }
 };
+
+export const getSensorsByFloor = async (req, res) => {
+  try {
+    const { floorId } = req.params;
+    if (!floorId) {
+      return res.status(400).json({ message: "floorId is required" });
+    }
+
+    const sensors = await PhysicalSensor.findByFloor(floorId);
+    res.json(sensors);
+  } catch (err) {
+    console.error("Error fetching sensors by floor:", err.message);
+    res.status(500).json({ message: "Failed to fetch sensors by floor" });
+  }
+};
