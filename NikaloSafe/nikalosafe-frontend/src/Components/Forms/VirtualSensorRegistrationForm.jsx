@@ -2,22 +2,25 @@ import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
 export default function VirtualSensorRegistrationForm({ onSubmit }) {
+  // State to store list of buildings, floors, physical sensors, and virtual sensors
   const [buildings, setBuildings] = useState([]);
   const [floors, setFloors] = useState([]);
   const [physicalSensors, setPhysicalSensors] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState(null);
   const [selectedFloor, setSelectedFloor] = useState(null);
 
-  // Manage a list of virtual sensors per physical sensor
+  // List of virtual sensors (one per physical sensor)
   const [virtualSensors, setVirtualSensors] = useState([]);
+  // Flag to disable button while submitting
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch buildings on mount
+  // Fetch buildings when the component mounts
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/buildings");
         const data = await res.json();
+        // Ensure response is an array
         setBuildings(Array.isArray(data) ? data : data.buildings || []);
       } catch (err) {
         console.error("Failed to load buildings:", err);
@@ -27,23 +30,26 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
     fetchBuildings();
   }, []);
 
-  // Fetch floors on building change
+  // Handle when a building is selected
   const handleBuildingChange = async (e) => {
     const buildingId = e.target.value;
+    // Find the selected building from the list
     const building = buildings.find((b) => b.building_id == buildingId);
     setSelectedBuilding(building || null);
-    setSelectedFloor(null);
-    setFloors([]);
-    setPhysicalSensors([]);
-    setVirtualSensors([]);
+    setSelectedFloor(null); // Reset floor
+    setFloors([]); // Clear floors
+    setPhysicalSensors([]); // Clear sensors
+    setVirtualSensors([]); // Clear virtual sensors
 
-    if (!building) return;
+    if (!building) return; // If no building is selected, stop here
 
     try {
+      // Fetch floors for the selected building
       const res = await fetch(
         `http://localhost:5000/api/floors/building/${building.building_id}`
       );
       const data = await res.json();
+      // Sort floors by floor number
       const sortedFloors = (Array.isArray(data) ? data : data.floors || []).sort(
         (a, b) => a.floor_number - b.floor_number
       );
@@ -54,17 +60,18 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
     }
   };
 
-  // Fetch physical sensors when floor changes
+  // Handle when a floor is selected
   const handleFloorChange = async (e) => {
     const floorId = e.target.value;
     const floor = floors.find((f) => f.floor_id == floorId);
     setSelectedFloor(floor);
-    setPhysicalSensors([]);
-    setVirtualSensors([]);
+    setPhysicalSensors([]); // Reset sensors
+    setVirtualSensors([]); // Reset virtual sensors
 
-    if (!floor) return;
+    if (!floor) return; // If no floor is selected, stop
 
     try {
+      // Fetch physical sensors for this floor
       const res = await fetch(
         `http://localhost:5000/api/sensors/floor/${floor.floor_id}`
       );
@@ -72,13 +79,13 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
       const sensors = Array.isArray(data) ? data : data.sensors || [];
       setPhysicalSensors(sensors);
 
-      // prepare virtual sensor objects for each physical sensor
+      // Initialize virtual sensor objects for each physical sensor
       setVirtualSensors(
         sensors.map((s) => ({
           sensor_id: s.sensor_id,
           floor_id: floor.floor_id,
-          virtual_sensor_number: "",
-          animation_status: "Normal", // always default
+          virtual_sensor_number: "", // user will fill this
+          animation_status: "Normal", // default value
         }))
       );
     } catch (err) {
@@ -87,7 +94,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
     }
   };
 
-  // Handle change for a single virtual sensor number
+  // Update virtual sensor number for a given index
   const handleVirtualSensorChange = (index, value) => {
     setVirtualSensors((prev) =>
       prev.map((vs, i) =>
@@ -96,10 +103,11 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
     );
   };
 
-  // Submit form
+  // Submit all virtual sensors
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Check if all virtual sensors have a number
     if (virtualSensors.some((vs) => !vs.virtual_sensor_number)) {
       return toast.error("Please enter Virtual Sensor Number for all sensors");
     }
@@ -108,11 +116,11 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
 
     try {
       if (onSubmit) {
-        await onSubmit(virtualSensors); // send all virtual sensors at once
+        await onSubmit(virtualSensors); // Send all virtual sensors at once to parent/handler
       }
       toast.success("Virtual Sensors registered successfully!");
 
-      // Reset form
+      // Reset form after success
       setSelectedBuilding(null);
       setSelectedFloor(null);
       setFloors([]);
@@ -130,11 +138,12 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
       onSubmit={handleSubmit}
       className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md"
     >
+      {/* Title */}
       <h2 className="text-2xl font-bold mb-6 text-center">
         Virtual Sensor Registration
       </h2>
 
-      {/* Building */}
+      {/* Building dropdown */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">
           Building
@@ -153,7 +162,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
         </select>
       </div>
 
-      {/* Floor */}
+      {/* Floor dropdown (visible only after selecting building) */}
       {selectedBuilding && (
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700">
@@ -174,7 +183,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
         </div>
       )}
 
-      {/* Virtual Sensors List */}
+      {/* Virtual Sensors list (shown only if floor and sensors exist) */}
       {selectedFloor && physicalSensors.length > 0 && (
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-2">Virtual Sensors</h3>
@@ -184,12 +193,15 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
                 key={sensor.sensor_id}
                 className="p-4 border rounded bg-gray-50 flex flex-col gap-2"
               >
+                {/* Show physical sensor info */}
                 <p className="text-sm text-gray-600">
                   Physical Sensor:{" "}
                   <span className="font-medium">
                     {sensor.sensor_number} ({sensor.type})
                   </span>
                 </p>
+
+                {/* Input for virtual sensor number */}
                 <input
                   type="text"
                   placeholder="Enter Virtual Sensor Number"
@@ -206,6 +218,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
         </div>
       )}
 
+      {/* Submit button */}
       <button
         type="submit"
         disabled={submitting || virtualSensors.length === 0}

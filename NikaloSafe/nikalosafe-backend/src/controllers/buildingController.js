@@ -1,19 +1,18 @@
-// controllers/buildingController.js
 import { Building } from "../models/buildingModel.js"; // Import the Building model
 
 // Controller → Register a new building
 export const registerBuilding = async (req, res) => {
   try {
-    // Create a new building record using request body data
+    // Call the model's create method with request body data
     const building = await Building.create(req.body);
 
-    // Send success response with the created building
+    // Send a success response with the newly created building
     res.status(201).json({ success: true, building });
   } catch (err) {
-    // Log error for debugging
+    // Log the error to console for debugging
     console.error("registerBuilding:", err);
 
-    // Send error response to client
+    // Send a generic server error response to the client
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -21,16 +20,16 @@ export const registerBuilding = async (req, res) => {
 // Controller → Fetch all buildings
 export const getAllBuildings = async (req, res) => {
   try {
-    // Fetch all buildings from DB
+    // Call the model's findAll method to fetch all building records
     const buildings = await Building.findAll();
 
-    // Send success response with list of buildings
+    // Send success response with the list of buildings
     res.json({ success: true, buildings });
   } catch (err) {
-    // Log error if query fails
-    console.error(err);
+    // Log the error to console
+    console.error("getAllBuildings:", err);
 
-    // Send generic error response
+    // Send a generic server error response
     res.status(500).json({ success: false });
   }
 };

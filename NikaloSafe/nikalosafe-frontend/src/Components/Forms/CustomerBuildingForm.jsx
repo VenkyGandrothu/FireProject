@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
 const CustomerBuildingForm = ({ onSubmit }) => {
+  // State for form fields
   const [formData, setFormData] = useState({
     customer_id: "",
     building_id: "",
@@ -11,11 +12,16 @@ const CustomerBuildingForm = ({ onSubmit }) => {
     subscription_status: "",
   });
 
+  // Dropdown data
   const [customers, setCustomers] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch customers and buildings
+  /**
+   * Fetch customers and buildings from backend on mount
+   * - Customers populate customer dropdown
+   * - Buildings populate building dropdown
+   */
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -34,12 +40,17 @@ const CustomerBuildingForm = ({ onSubmit }) => {
     fetchData();
   }, []);
 
+  /**
+   * Handle input change
+   * - Updates the corresponding form field
+   * - Recalculates `days_of_subscription` when start or end date changes
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    // Auto-calculate days_of_subscription
+    // Auto-calculate days when dates change
     if (name === "start_date" || name === "end_date") {
       const start = name === "start_date" ? value : formData.start_date;
       const end = name === "end_date" ? value : formData.end_date;
@@ -48,6 +59,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
         const startDate = new Date(start);
         const endDate = new Date(end);
         if (!isNaN(startDate) && !isNaN(endDate) && endDate >= startDate) {
+          // +1 to include both start and end date
           const diffDays =
             Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
           setFormData((prev) => ({
@@ -55,27 +67,37 @@ const CustomerBuildingForm = ({ onSubmit }) => {
             days_of_subscription: diffDays,
           }));
         } else {
+          // Reset days if invalid
           setFormData((prev) => ({ ...prev, days_of_subscription: "" }));
         }
       }
     }
   };
 
+  /**
+   * Handle form submission
+   * - Validates required fields
+   * - Checks if same customer-building relation already exists
+   * - Ensures valid days and date range
+   * - Sends POST request to backend
+   * - Displays success or error toast
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const { customer_id, building_id, days_of_subscription, start_date, end_date } = formData;
 
+    // Required field validation
     if (!customer_id || !building_id) {
       toast.error("Please select both customer and building");
       return;
     }
 
-    //Duplicate check before submit
+    // 🔍 Duplicate relation check before submit
     try {
       const resCheck = await fetch("http://localhost:5000/api/customer-building");
       const data = await resCheck.json();
-      const existingData = data.relations || []; // extract array safely
+      const existingData = data.relations || []; // safe extraction
 
       const alreadyExists = existingData.some(
         (record) =>
@@ -91,12 +113,14 @@ const CustomerBuildingForm = ({ onSubmit }) => {
       console.error("Validation fetch error:", err);
     }
 
+    // Validate days
     const days = Number(days_of_subscription);
     if (isNaN(days) || days <= 0) {
       toast.error("Days of subscription must be a positive number");
       return;
     }
 
+    // Validate dates
     const startDate = new Date(start_date);
     const endDate = new Date(end_date);
     if (!start_date || !end_date || isNaN(startDate) || isNaN(endDate)) {
@@ -109,6 +133,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
       return;
     }
 
+    // Final submission
     setSubmitting(true);
     try {
       const res = await fetch("http://localhost:5000/api/customer-building/register", {
@@ -120,6 +145,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
       if (!res.ok) throw new Error(json.message || "Failed to create relation");
 
       toast.success("Customer linked to building successfully");
+      // Reset form after successful save
       setFormData({
         customer_id: "",
         building_id: "",
@@ -209,7 +235,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
         />
       </div>
 
-      {/* Days of Subscription */}
+      {/* Days of Subscription (auto-calculated, read-only) */}
       <div className="mb-4">
         <label className="block text-sm text-gray-700">Days of Subscription</label>
         <input
@@ -221,10 +247,11 @@ const CustomerBuildingForm = ({ onSubmit }) => {
         />
       </div>
 
-      {/* Subscription Status */}
+      {/* Subscription Status toggle buttons */}
       <div className="mb-4">
         <label className="block text-sm text-gray-700 mb-2">Subscription Status</label>
         <div className="flex gap-4">
+          {/* Active button */}
           <button
             type="button"
             onClick={() =>
@@ -238,6 +265,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
           >
             Active
           </button>
+          {/* Inactive button */}
           <button
             type="button"
             onClick={() =>
@@ -254,6 +282,7 @@ const CustomerBuildingForm = ({ onSubmit }) => {
         </div>
       </div>
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={submitting}
