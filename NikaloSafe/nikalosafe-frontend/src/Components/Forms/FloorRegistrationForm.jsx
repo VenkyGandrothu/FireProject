@@ -2,19 +2,23 @@ import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
 const FloorRegistrationForm = ({ onSubmit }) => {
+  // State for buildings list fetched from API
   const [buildings, setBuildings] = useState([]);
+  // State for selected building
   const [selectedBuilding, setSelectedBuilding] = useState(null);
+  // State for floors that will be generated dynamically based on building selection
   const [floors, setFloors] = useState([]);
+  // State to track form submission status
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch buildings for dropdown
+  // Fetch buildings from backend API when the component mounts
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/buildings");
         const json = await res.json();
         if (res.ok) {
-          setBuildings(json.buildings);
+          setBuildings(json.buildings); // Store building data in state
         }
       } catch (err) {
         console.error("Failed to load buildings:", err);
@@ -23,25 +27,26 @@ const FloorRegistrationForm = ({ onSubmit }) => {
     fetchBuildings();
   }, []);
 
-  // Handle building selection → auto-generate floor rows
+  // When user selects a building → auto-generate floor objects
   const handleBuildingChange = (e) => {
     const buildingId = e.target.value;
     const building = buildings.find((b) => b.building_id == buildingId);
     setSelectedBuilding(building || null);
 
+    // Generate floors if building has num_floors > 0
     if (building && building.num_floors > 0) {
       const generatedFloors = Array.from({ length: building.num_floors }, (_, i) => ({
-        floor_number: i + 1,
+        floor_number: i + 1, // Floors start from 1
         description: "",
         num_sensors: 0,
       }));
       setFloors(generatedFloors);
     } else {
-      setFloors([]);
+      setFloors([]); // Reset floors if no building selected
     }
   };
 
-  // Handle floor field change
+  // Update specific floor field (description or num_sensors)
   const handleFloorChange = (index, field, value) => {
     setFloors((prev) =>
       prev.map((floor, i) =>
@@ -50,17 +55,19 @@ const FloorRegistrationForm = ({ onSubmit }) => {
     );
   };
 
-  // Submit handler
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate building selection
     if (!selectedBuilding) {
       toast.error("Please select a building");
       return;
     }
 
+    // Prepare cleaned floors payload
     const cleanedFloors = floors.map((f) => ({
-      building_id: selectedBuilding.building_id,
+      building_id: selectedBuilding.building_id, // Attach building id
       floor_number: f.floor_number,
       description: f.description.trim(),
       num_sensors: Number(f.num_sensors),
@@ -68,8 +75,11 @@ const FloorRegistrationForm = ({ onSubmit }) => {
 
     setSubmitting(true);
     try {
-      await onSubmit(cleanedFloors); // pass array of floors to parent
+      // Pass floors array to parent component via onSubmit
+      await onSubmit(cleanedFloors);
       toast.success("Floors added successfully");
+
+      // Reset form state
       setSelectedBuilding(null);
       setFloors([]);
     } catch (err) {
@@ -85,11 +95,15 @@ const FloorRegistrationForm = ({ onSubmit }) => {
       onSubmit={handleSubmit}
       className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md"
     >
-      <h2 className="text-2xl font-bold mb-4 text-center">Floor and sensor info</h2>
+      <h2 className="text-2xl font-bold mb-4 text-center">
+        Floor and sensor info
+      </h2>
 
       {/* Building Dropdown */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700">Building</label>
+        <label className="block text-sm font-medium text-gray-700">
+          Building
+        </label>
         <select
           onChange={handleBuildingChange}
           className="w-full mt-1 p-2 border rounded border-gray-300"
@@ -104,7 +118,7 @@ const FloorRegistrationForm = ({ onSubmit }) => {
         </select>
       </div>
 
-      {/* Dynamic Floors */}
+      {/* Dynamic Floors Section (only visible if building is selected) */}
       {floors.length > 0 && (
         <div className="space-y-4">
           {floors.map((floor, index) => (
@@ -112,11 +126,14 @@ const FloorRegistrationForm = ({ onSubmit }) => {
               key={floor.floor_number}
               className="p-4 border rounded-lg bg-gray-50 shadow-sm"
             >
+              {/* Floor title */}
               <h3 className="font-semibold mb-2">
                 Floor {floor.floor_number}
               </h3>
+
+              {/* Grid for Description and Sensors input */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Description */}
+                {/* Floor Description */}
                 <div>
                   <label className="block text-sm text-gray-700">
                     Description
@@ -131,7 +148,7 @@ const FloorRegistrationForm = ({ onSubmit }) => {
                   />
                 </div>
 
-                {/* Num Sensors */}
+                {/* Number of Sensors */}
                 <div>
                   <label className="block text-sm text-gray-700">
                     Number of Sensors
@@ -152,6 +169,7 @@ const FloorRegistrationForm = ({ onSubmit }) => {
         </div>
       )}
 
+      {/* Submit Button */}
       <button
         type="submit"
         disabled={submitting || !selectedBuilding}

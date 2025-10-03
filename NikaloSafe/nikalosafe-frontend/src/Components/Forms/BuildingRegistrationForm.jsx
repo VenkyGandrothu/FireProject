@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 const BuildingRegistrationForm = ({ onSubmit }) => {
+  // Initial state for form fields
   const initialState = {
     building_name: "",
     num_floors: "",
@@ -11,23 +12,41 @@ const BuildingRegistrationForm = ({ onSubmit }) => {
     building_country: "",
   };
 
+  // State to hold form input values
   const [formData, setFormData] = useState(initialState);
+  // State to store validation errors (key: field name, value: error message)
   const [errors, setErrors] = useState({});
+  // State to track submission/loading status
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Handle input change for all fields
+   * - Updates the corresponding formData property
+   * - Clears error for that field
+   * - Ensures "num_floors" accepts only digits
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setErrors((prev) => ({ ...prev, [name]: "" })); // clear only the changed field error
 
+    // Clear only the changed field error
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+
+    // For "num_floors", allow only digits
     setFormData((prev) => ({
       ...prev,
       [name]:
         name === "num_floors"
-          ? value.replace(/\D/g, "") // allow only digits
+          ? value.replace(/\D/g, "") // strip non-digits
           : value,
     }));
   };
 
+  /**
+   * Validate form fields
+   * - Checks required fields
+   * - Validates num_floors is a non-negative integer
+   * Returns an object of errors (empty if valid)
+   */
   const validate = (data) => {
     let newErrors = {};
 
@@ -57,25 +76,36 @@ const BuildingRegistrationForm = ({ onSubmit }) => {
     return newErrors;
   };
 
+  /**
+   * Handle form submission
+   * - Prevents page reload
+   * - Cleans & trims input values
+   * - Runs validation
+   * - Converts num_floors to number only after validation
+   * - Calls onSubmit (API from parent)
+   * - Displays success/error toast messages
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Clean input values
     const cleaned = {
       building_name: formData.building_name.trim(),
-      num_floors: formData.num_floors.trim(), // keep string for validation
+      num_floors: formData.num_floors.trim(), // keep string for validation first
       building_address: formData.building_address.trim(),
       building_city: formData.building_city.trim(),
       building_state: formData.building_state.trim(),
       building_country: formData.building_country.trim(),
     };
 
+    // Validate inputs
     const validationErrors = validate(cleaned);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
 
-    // ✅ convert number only after validation passes
+    // Convert num_floors to number only after validation passes
     const finalData = {
       ...cleaned,
       num_floors: Number(cleaned.num_floors),
@@ -83,15 +113,15 @@ const BuildingRegistrationForm = ({ onSubmit }) => {
 
     setSubmitting(true);
     try {
-      await onSubmit(finalData); // API call from parent
+      await onSubmit(finalData); // Call parent API
       toast.success("Building registered successfully");
-      setFormData(initialState);
+      setFormData(initialState); // Reset form
       setErrors({});
     } catch (err) {
       const msg = err?.message || "Failed to register building";
       toast.error(msg);
     } finally {
-      setSubmitting(false);
+      setSubmitting(false); // Stop loading
     }
   };
 
@@ -104,6 +134,7 @@ const BuildingRegistrationForm = ({ onSubmit }) => {
         Building Registration
       </h2>
 
+      {/* Dynamically generate form fields */}
       {[
         { label: "Building Name", name: "building_name", type: "text" },
         { label: "Number of Floors", name: "num_floors", type: "text" },
@@ -129,12 +160,14 @@ const BuildingRegistrationForm = ({ onSubmit }) => {
               errors[field.name] ? "border-red-500" : "border-gray-300"
             }`}
           />
+          {/* Show validation error if exists */}
           {errors[field.name] && (
             <p className="text-red-600 text-sm mt-1">{errors[field.name]}</p>
           )}
         </div>
       ))}
 
+      {/* Submit button with loading state */}
       <button
         type="submit"
         disabled={submitting}

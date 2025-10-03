@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 const CustomerRegistrationForm = ({ onSubmit }) => {
+  // Initial state structure for form fields
   const initialState = {
     name: "",
     email: "",
@@ -12,20 +13,36 @@ const CustomerRegistrationForm = ({ onSubmit }) => {
     country: "",
   };
 
+  // State to store form values
   const [formData, setFormData] = useState(initialState);
+  // State to store validation errors
   const [errors, setErrors] = useState({});
+  // State to handle submission status (loading)
   const [submitting, setSubmitting] = useState(false);
 
+  /**
+   * Handles input change for all fields
+   * - Updates formData state
+   * - Clears error for the field being typed
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setErrors((prev) => ({ ...prev, [name]: "" })); // clear error for that field
+    setErrors((prev) => ({ ...prev, [name]: "" })); // clear only that field's error
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  /**
+   * Validates the form data
+   * - Ensures required fields are filled
+   * - Validates email format
+   * - Checks phone number length
+   * Returns an object of errors
+   */
   const validate = (data) => {
     let newErrors = {};
 
     if (!data.name.trim()) newErrors.name = "Name is required";
+
     if (!data.email.trim()) {
       newErrors.email = "Email is required";
     } else {
@@ -49,9 +66,17 @@ const CustomerRegistrationForm = ({ onSubmit }) => {
     return newErrors;
   };
 
+  /**
+   * Handles form submission
+   * - Prevents default form refresh
+   * - Cleans and validates data
+   * - If valid, calls parent onSubmit function (API call)
+   * - Displays success or error messages using toast
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Clean/trim inputs
     const cleaned = {
       name: formData.name.trim(),
       email: formData.email.trim(),
@@ -62,23 +87,26 @@ const CustomerRegistrationForm = ({ onSubmit }) => {
       country: formData.country.trim(),
     };
 
+    // Validate inputs
     const validationErrors = validate(cleaned);
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+      setErrors(validationErrors); // show errors if any
       return;
     }
 
+    // Start submission (loading state)
     setSubmitting(true);
     try {
-      await onSubmit(cleaned); // call parent API
+      await onSubmit(cleaned); // parent function (e.g., API request)
       toast.success("Customer registered successfully ");
-      setFormData(initialState);
+      setFormData(initialState); // reset form
       setErrors({});
     } catch (err) {
+      // Show error toast if submission fails
       const msg = err?.message || "Failed to register customer";
       toast.error(msg);
     } finally {
-      setSubmitting(false);
+      setSubmitting(false); // stop loading
     }
   };
 
@@ -91,6 +119,7 @@ const CustomerRegistrationForm = ({ onSubmit }) => {
         Customer Registration
       </h2>
 
+      {/* Loop through each form field dynamically */}
       {[
         { label: "Name", name: "name", type: "text" },
         { label: "Email", name: "email", type: "email" },
@@ -117,21 +146,23 @@ const CustomerRegistrationForm = ({ onSubmit }) => {
               errors[field.name] ? "border-red-500" : "border-gray-300"
             }`}
           />
+          {/* Show validation error below input */}
           {errors[field.name] && (
             <p className="text-red-600 text-sm mt-1">{errors[field.name]}</p>
           )}
         </div>
       ))}
 
-    <button
-      type="submit"
-      disabled={submitting}
-      className={`w-full ${
-        submitting
-          ? "bg-gray-400 cursor-not-allowed"
-          : "bg-[#F4003B] hover:bg-[#d10032]"
-      } text-white py-2 rounded`}
-    >
+      {/* Submit button with loading state */}
+      <button
+        type="submit"
+        disabled={submitting}
+        className={`w-full ${
+          submitting
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-[#F4003B] hover:bg-[#d10032]"
+        } text-white py-2 rounded`}
+      >
         {submitting ? "Registering..." : "Register"}
       </button>
     </form>

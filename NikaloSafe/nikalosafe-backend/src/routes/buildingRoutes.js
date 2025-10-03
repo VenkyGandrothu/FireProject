@@ -1,14 +1,28 @@
+// Import Express framework
 import express from "express";
-import { registerBuilding, getAllBuildings } from "../controllers/buildingController.js";
 
-const router = express.Router(); // Create a new Express router instance
+// Import controller functions for building operations
+import { 
+  registerBuilding, // Handles registering a new building
+  getAllBuildings   // Retrieves all buildings from the database
+} from "../controllers/buildingController.js";
 
-// Route → Register a new building
-// POST /api/buildings/register
+// Create a new Express Router instance
+const router = express.Router();
+
+// ----------------------
+// Routes for Building
+// ----------------------
+
+// POST /register
+// Registers a new building
+// Expects building data in the request body
 router.post("/register", registerBuilding);
 
-// Route → Get all buildings
-// GET /api/buildings
+// GET /
+// Fetch all buildings
+// Returns an array of all building objects
 router.get("/", getAllBuildings);
 
-export default router; // Export router to be used in server.js
+// Export the router to be used in the main server file
+export default router;
