@@ -16,7 +16,15 @@ import linkedQrPathRoutes from "./routes/linkedQrPathRoutes.js";
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173', // Vite dev server
+    'http://localhost:3000', // Alternative dev port
+    'https://nikalosafe-frontend.onrender.com', // Production frontend
+    // Add your actual frontend URL here after deployment
+  ],
+  credentials: true
+}));
 app.use(bodyParser.json()); // you could just use express.json()
 
 // Routes
