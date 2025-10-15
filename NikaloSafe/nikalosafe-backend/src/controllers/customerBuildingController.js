@@ -1,92 +1,94 @@
-import { CustomerBuilding } from "../models/customerBuildingModel.js";
+import prisma from '../config/prisma.js';
 
-// Controller → Register a new customer-building relation
+// Controller → Register customer-building relationship (alias for createCustomerBuilding)
 export const registerCustomerBuilding = async (req, res) => {
   try {
-    const data = req.body;
+    const { customer_id, building_id, days_of_subscription, start_date, end_date, subscription_status } = req.body;
 
-    const { customer_id, building_id, start_date, end_date, days_of_subscription } = data;
+    // Create customer-building relationship using Prisma
+    const customerBuilding = await prisma.customerBuilding.create({
+      data: {
+        customer_id: Number(customer_id),
+        building_id: Number(building_id),
+        days_of_subscription: Number(days_of_subscription),
+        start_date: new Date(start_date),
+        end_date: new Date(end_date),
+        subscription_status: subscription_status || "inactive",
+      },
+    });
 
-    // Validate required fields
-    if (!customer_id || !building_id) {
-      return res.status(400).json({ success: false, message: "Customer and Building are required" });
-    }
-
-    // Validate date fields
-    const start = new Date(start_date);
-    const end = new Date(end_date);
-    if (isNaN(start) || isNaN(end)) {
-      return res.status(400).json({ success: false, message: "Invalid dates" });
-    }
-    if (end < start) {
-      return res.status(400).json({ success: false, message: "End date cannot be before start date" });
-    }
-
-    // Validate days of subscription against the date range
-    const expectedDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    if (Number(days_of_subscription) !== expectedDays) {
-      return res.status(400).json({ success: false, message: "Days of subscription mismatch with dates" });
-    }
-
-    // Call model to create the relation
-    const newRelation = await CustomerBuilding.create(data);
-
-    // Return success response with the newly created relation
-    res.status(201).json({ success: true, relation: newRelation });
+    res.status(201).json({ success: true, customerBuilding });
   } catch (err) {
     console.error("registerCustomerBuilding:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Controller → Get all customer-building relations
+// Controller → Get all customer-building relationships
 export const getAllCustomerBuildings = async (req, res) => {
   try {
-    // Call model to fetch all relations
-    const relations = await CustomerBuilding.findAll();
-    
-    // Send response with the list of relations
-    res.json({ success: true, relations });
+    const customerBuildings = await prisma.customerBuilding.findMany({
+      include: {
+        customer: true,
+        building: true,
+      },
+      orderBy: {
+        customer_building_id: 'desc',
+      },
+    });
+
+    res.json({ success: true, customerBuildings });
   } catch (err) {
     console.error("getAllCustomerBuildings:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Controller → Get a single relation by ID
+// Controller → Get customer-building relationship by ID
 export const getCustomerBuildingById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Call model to fetch the relation
-    const relation = await CustomerBuilding.findById(id);
+    const customerBuilding = await prisma.customerBuilding.findUnique({
+      where: {
+        customer_building_id: Number(id),
+      },
+      include: {
+        customer: true,
+        building: true,
+      },
+    });
 
-    // Handle not found
-    if (!relation) return res.status(404).json({ success: false, message: "Relation not found" });
+    if (!customerBuilding) {
+      return res.status(404).json({ success: false, message: "Customer-building relationship not found" });
+    }
 
-    // Return the relation
-    res.json({ success: true, relation });
+    res.json({ success: true, customerBuilding });
   } catch (err) {
     console.error("getCustomerBuildingById:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Controller → Delete a relation by ID
+// Controller → Delete customer-building relationship by ID
 export const deleteCustomerBuilding = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Call model to delete the relation
-    const deleted = await CustomerBuilding.delete(id);
+    const deletedCustomerBuilding = await prisma.customerBuilding.delete({
+      where: {
+        customer_building_id: Number(id),
+      },
+    });
 
-    // Handle not found
-    if (!deleted) return res.status(404).json({ success: false, message: "Relation not found" });
-
-    // Return success response
-    res.json({ success: true, message: "Relation deleted", relation: deleted });
+    res.json({ success: true, message: "Customer-building relationship deleted successfully", customerBuilding: deletedCustomerBuilding });
   } catch (err) {
     console.error("deleteCustomerBuilding:", err);
+    
+    if (err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: "Customer-building relationship not found" });
+    }
+    
     res.status(500).json({ success: false, message: "Server error" });
   }
 };

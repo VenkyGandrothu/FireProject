@@ -1,126 +1,135 @@
-import { PhysicalSensor } from "../models/physicalSensorModel.js";
+import prisma from '../config/prisma.js';
 
-// Register a single sensor
+// Controller → Register physical sensor (alias for createPhysicalSensor)
 export const registerSensor = async (req, res) => {
   try {
-    const { floorId, sensor_number, location, type, sensorStatus } = req.body;
+    const { floor_id, sensor_number, location, type, sensor_status } = req.body;
 
-    // Validate required fields
-    if (!floorId || !sensor_number || !type || !sensorStatus) {
-      return res.status(400).json({ message: "floorId, sensor_number, type, and sensorStatus are required" });
-    }
-
-    // Insert sensor into database
-    const sensor = await PhysicalSensor.create({
-      floor_id: floorId,
-      sensor_number,
-      location: location || null,
-      type,
-      sensor_status: sensorStatus,
+    const sensor = await prisma.physicalSensor.create({
+      data: {
+        floor_id: Number(floor_id),
+        sensor_number: String(sensor_number),
+        location: location || null,
+        type,
+        sensor_status,
+      },
     });
 
-    // Respond with created sensor
-    res.status(201).json({
-      message: "Sensor registered successfully",
-      sensor,
-    });
+    res.status(201).json({ success: true, sensor });
   } catch (err) {
-    console.error("Error in registerSensor:", err.message);
-    res.status(500).json({ message: "Failed to register sensor" });
+    console.error("registerSensor:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Bulk register sensors
+// Controller → Register multiple sensors in bulk
 export const registerSensorsBulk = async (req, res) => {
   try {
-    const { floorId, sensors } = req.body;
+    const { floor_id, sensors } = req.body;
 
-    // Validate input
-    if (!floorId || !Array.isArray(sensors) || sensors.length === 0) {
-      return res.status(400).json({ message: "Invalid input data" });
+    if (!sensors || sensors.length === 0) {
+      return res.status(400).json({ success: false, message: "Sensors array is required" });
     }
 
-    // Validate each sensor in the array
-    for (const s of sensors) {
-      if (!s.sensor_number || !s.type || !s.sensorStatus) {
-        return res.status(400).json({ message: "Each sensor must have sensor_number, type, and sensorStatus" });
-      }
+    const createdSensors = [];
+    for (const sensor of sensors) {
+      const createdSensor = await prisma.physicalSensor.create({
+        data: {
+          floor_id: Number(floor_id),
+          sensor_number: String(sensor.sensor_number),
+          location: sensor.location || null,
+          type: sensor.type,
+          sensor_status: sensor.sensorStatus,
+        },
+      });
+      createdSensors.push(createdSensor);
     }
 
-    // Insert all sensors in bulk
-    const insertedSensors = await PhysicalSensor.createBulk(floorId, sensors);
-
-    // Respond with inserted sensors
-    res.status(201).json({
-      message: "Sensors registered successfully",
-      sensors: insertedSensors,
-    });
+    res.status(201).json({ success: true, sensors: createdSensors });
   } catch (err) {
-    console.error("Error in registerSensorsBulk:", err.message);
-    res.status(500).json({ message: "Failed to register sensors" });
+    console.error("registerSensorsBulk:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get all sensors
+// Controller → Get all physical sensors
 export const getAllSensors = async (req, res) => {
   try {
-    const sensors = await PhysicalSensor.findAll();
-    res.json(sensors); // Return all sensors
+    const sensors = await prisma.physicalSensor.findMany({
+      orderBy: {
+        sensor_id: 'asc',
+      },
+    });
+
+    res.json({ success: true, sensors });
   } catch (err) {
-    console.error("Error fetching sensors:", err.message);
-    res.status(500).json({ message: "Failed to fetch sensors" });
+    console.error("getAllSensors:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get sensor by ID
+// Controller → Get sensor by ID
 export const getSensorById = async (req, res) => {
   try {
     const { id } = req.params;
-    const sensor = await PhysicalSensor.findById(id);
+
+    const sensor = await prisma.physicalSensor.findUnique({
+      where: {
+        sensor_id: Number(id),
+      },
+    });
 
     if (!sensor) {
-      return res.status(404).json({ message: "Sensor not found" });
+      return res.status(404).json({ success: false, message: "Sensor not found" });
     }
 
-    res.json(sensor); // Return sensor data
+    res.json({ success: true, sensor });
   } catch (err) {
-    console.error("Error fetching sensor:", err.message);
-    res.status(500).json({ message: "Failed to fetch sensor" });
+    console.error("getSensorById:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Delete sensor
-export const deleteSensor = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleted = await PhysicalSensor.delete(id);
-
-    if (!deleted) {
-      return res.status(404).json({ message: "Sensor not found" });
-    }
-
-    res.json({ message: "Sensor deleted successfully", sensor: deleted });
-  } catch (err) {
-    console.error("Error deleting sensor:", err.message);
-    res.status(500).json({ message: "Failed to delete sensor" });
-  }
-};
-
-// Get sensors by floor
+// Controller → Get sensors by floor
 export const getSensorsByFloor = async (req, res) => {
   try {
     const { floorId } = req.params;
 
-    // Validate floorId
-    if (!floorId) {
-      return res.status(400).json({ message: "floorId is required" });
-    }
+    const sensors = await prisma.physicalSensor.findMany({
+      where: {
+        floor_id: Number(floorId),
+      },
+      orderBy: {
+        sensor_id: 'asc',
+      },
+    });
 
-    // Fetch sensors for a specific floor
-    const sensors = await PhysicalSensor.findByFloor(floorId);
-    res.json(sensors);
+    res.json({ success: true, sensors });
   } catch (err) {
-    console.error("Error fetching sensors by floor:", err.message);
-    res.status(500).json({ message: "Failed to fetch sensors by floor" });
+    console.error("getSensorsByFloor:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Controller → Delete sensor by ID
+export const deleteSensor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedSensor = await prisma.physicalSensor.delete({
+      where: {
+        sensor_id: Number(id),
+      },
+    });
+
+    res.json({ success: true, message: "Sensor deleted successfully", sensor: deletedSensor });
+  } catch (err) {
+    console.error("deleteSensor:", err);
+    
+    if (err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: "Sensor not found" });
+    }
+    
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

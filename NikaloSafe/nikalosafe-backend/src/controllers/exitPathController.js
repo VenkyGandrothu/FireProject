@@ -1,158 +1,128 @@
-// controllers/exitPathController.js
-import { ExitPath } from "../models/exitPathModel.js";
+import prisma from '../config/prisma.js';
 
-const VALID_STATUSES = ["Open", "Closed"];
-
+// Controller → Register exit paths (single or multiple)
 export const registerExitPaths = async (req, res) => {
   try {
-    // Accept either array body or { paths: [...] }
-    const body = req.body && Array.isArray(req.body.paths) ? req.body.paths : req.body;
-    const data = Array.isArray(body) ? body : [body];
+    const paths = req.body;
 
-    if (!data || data.length === 0) {
-      return res.status(400).json({ message: "No exit paths provided" });
-    }
-
-    const validPaths = [];
-    const errors = [];
-
-    data.forEach((p, idx) => {
-      const index = idx + 1;
-
-      const floor_id = p.floor_id;
-      const start_point = typeof p.start_point === "string" ? p.start_point.trim() : "";
-      const end_point = typeof p.end_point === "string" ? p.end_point.trim() : "";
-      const path_status = typeof p.path_status === "string" ? p.path_status.trim() : "";
-      const path_length_raw = p.path_length;
-
-      // Validate floor_id
-      if (floor_id === undefined || floor_id === null || Number.isNaN(Number(floor_id))) {
-        errors.push(`Path ${index}: floor_id is required and must be a number`);
+    // Check if it's a single path or an array
+    if (Array.isArray(paths)) {
+      // Multiple paths
+      if (paths.length === 0) {
+        return res.status(400).json({ success: false, message: "Paths array is required" });
       }
 
-      if (!start_point) errors.push(`Path ${index}: start_point is required`);
-      if (!end_point) errors.push(`Path ${index}: end_point is required`);
-      if (!path_status) {
-        errors.push(`Path ${index}: path_status is required`);
-      } else if (!VALID_STATUSES.includes(path_status)) {
-        errors.push(`Path ${index}: path_status must be one of ${VALID_STATUSES.join(", ")}`);
-      }
+      const createdPaths = await prisma.exitPath.createMany({
+        data: paths.map(path => ({
+          floor_id: Number(path.floor_id),
+          start_point: path.start_point,
+          end_point: path.end_point,
+          path_status: path.path_status,
+          path_length: parseFloat(path.path_length),
+        })),
+      });
 
-      const path_length = Number(path_length_raw);
-      if (!Number.isFinite(path_length) || path_length <= 0) {
-        errors.push(`Path ${index}: path_length must be a positive number`);
-      }
+      res.status(201).json({ success: true, count: createdPaths.count });
+    } else {
+      // Single path
+      const { floor_id, start_point, end_point, path_status, path_length } = paths;
 
-      // If all ok, push to validPaths with normalized types
-      if (
-        floor_id !== undefined &&
-        !Number.isNaN(Number(floor_id)) &&
-        start_point &&
-        end_point &&
-        path_status &&
-        VALID_STATUSES.includes(path_status) &&
-        Number.isFinite(path_length) &&
-        path_length > 0
-      ) {
-        validPaths.push({
+      const exitPath = await prisma.exitPath.create({
+        data: {
           floor_id: Number(floor_id),
           start_point,
           end_point,
           path_status,
-          path_length,
-        });
-      }
-    });
+          path_length: parseFloat(path_length),
+        },
+      });
 
-    if (validPaths.length === 0) {
-      // Return 400 with details
-      return res.status(400).json({ message: "No valid exit paths provided", errors });
+      res.status(201).json({ success: true, exitPath });
     }
-
-    // Insert valid paths in bulk
-    const insertedPaths = await ExitPath.createBulk(validPaths);
-
-    res.status(201).json({
-      message: "Exit paths registered successfully",
-      exitPaths: insertedPaths,
-      errors: errors.length > 0 ? errors : undefined,
-    });
   } catch (err) {
-    // Log full stack for debugging
-    console.error("registerExitPaths error:", err && err.stack ? err.stack : err);
-    res.status(500).json({ message: "Internal Server Error", details: err.message });
+    console.error("registerExitPaths:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/**
- * Fetch all exit paths
- */
+// Controller → Get all exit paths
 export const getAllExitPaths = async (req, res) => {
   try {
-    const exitPaths = await ExitPath.findAll();
-    // Keep response shape consistent with other controllers
-    res.json({ exitPaths });
+    const exitPaths = await prisma.exitPath.findMany({
+      orderBy: {
+        path_id: 'desc',
+      },
+    });
+
+    res.json({ success: true, exitPaths });
   } catch (err) {
-    console.error("getAllExitPaths error:", err && err.stack ? err.stack : err);
-    const errMsg = (err && err.message) ? err.message : "Internal Server Error";
-    res.status(500).json({ message: errMsg });
+    console.error("getAllExitPaths:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Fetch exit paths by floor id
-export const getExitPathsByFloor = async (req, res) => {
-  try {
-    const floorId = Number(req.params.floor_id);
-    if (!Number.isFinite(floorId) || floorId <= 0) {
-      return res.status(400).json({ message: "Invalid floor id" });
-    }
-    const exitPaths = await ExitPath.findByFloor(floorId);
-    res.json({ exitPaths });
-  } catch (err) {
-    console.error("getExitPathsByFloor error:", err && err.stack ? err.stack : err);
-    const errMsg = (err && err.message) ? err.message : "Internal Server Error";
-    res.status(500).json({ message: errMsg });
-  }
-};
-
-/**
- * Fetch exit path by ID
- */
+// Controller → Get exit path by ID
 export const getExitPathById = async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ message: "Invalid exit path id" });
+    const { id } = req.params;
+
+    const exitPath = await prisma.exitPath.findUnique({
+      where: {
+        path_id: Number(id),
+      },
+    });
+
+    if (!exitPath) {
+      return res.status(404).json({ success: false, message: "Exit path not found" });
     }
 
-    const exitPath = await ExitPath.findById(id);
-    if (!exitPath) return res.status(404).json({ message: "Exit path not found" });
-
-    res.json({ exitPath });
+    res.json({ success: true, exitPath });
   } catch (err) {
-    console.error("getExitPathById error:", err && err.stack ? err.stack : err);
-    const errMsg = (err && err.message) ? err.message : "Internal Server Error";
-    res.status(500).json({ message: errMsg });
+    console.error("getExitPathById:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/**
- * Delete exit path by ID
- */
+// Controller → Delete exit path by ID
 export const deleteExitPath = async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ message: "Invalid exit path id" });
-    }
+    const { id } = req.params;
 
-    const exitPath = await ExitPath.delete(id);
-    if (!exitPath) return res.status(404).json({ message: "Exit path not found" });
+    const deletedExitPath = await prisma.exitPath.delete({
+      where: {
+        path_id: Number(id),
+      },
+    });
 
-    res.json({ message: "Exit path deleted successfully", exitPath });
+    res.json({ success: true, message: "Exit path deleted successfully", exitPath: deletedExitPath });
   } catch (err) {
-    console.error("deleteExitPath error:", err && err.stack ? err.stack : err);
-    const errMsg = (err && err.message) ? err.message : "Internal Server Error";
-    res.status(500).json({ message: errMsg });
+    console.error("deleteExitPath:", err);
+    
+    if (err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: "Exit path not found" });
+    }
+    
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Controller → Get exit paths by floor
+export const getExitPathsByFloor = async (req, res) => {
+  try {
+    const { floor_id } = req.params;
+
+    const exitPaths = await prisma.exitPath.findMany({
+      where: {
+        floor_id: Number(floor_id),
+      },
+      orderBy: {
+        path_id: 'desc',
+      },
+    });
+
+    res.json({ success: true, exitPaths });
+  } catch (err) {
+    console.error("getExitPathsByFloor:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

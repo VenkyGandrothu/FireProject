@@ -1,73 +1,105 @@
-import { Floor } from "../models/floorModel.js";
+import prisma from '../config/prisma.js';
 
-// Register a new floor or multiple floors
+// Controller → Register a new floor (alias for createFloor)
 export const registerFloor = async (req, res) => {
   try {
-    // Support both single object and array of floors
-    const floorsData = Array.isArray(req.body) ? req.body : [req.body];
+    const { building_id, floor_number, description, num_sensors } = req.body;
 
-    const insertedFloors = [];
-    // Loop through each floor data and create in DB
-    for (const floorData of floorsData) {
-      const floor = await Floor.create(floorData);
-      insertedFloors.push(floor);
-    }
+    // Create floor using Prisma
+    const floor = await prisma.floor.create({
+      data: {
+        building_id: Number(building_id),
+        floor_number: Number(floor_number),
+        description: description || null,
+        num_sensors: num_sensors || 0,
+      },
+    });
 
-    // Respond with inserted floor(s)
-    res.status(201).json({ success: true, floors: insertedFloors });
+    res.status(201).json({ success: true, floor });
   } catch (err) {
     console.error("registerFloor:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get all floors
+// Controller → Get all floors
 export const getAllFloors = async (req, res) => {
   try {
-    const floors = await Floor.findAll(); // Fetch all floors from DB
+    const floors = await prisma.floor.findMany({
+      orderBy: {
+        floor_id: 'desc',
+      },
+    });
+
     res.json({ success: true, floors });
   } catch (err) {
     console.error("getAllFloors:", err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get floors by building_id
+// Controller → Get floors by building
 export const getFloorsByBuilding = async (req, res) => {
   try {
-    const { building_id } = req.params; // Extract building_id from request params
-    const floors = await Floor.findByBuilding(building_id); // Fetch floors for given building
+    const { building_id } = req.params;
+
+    const floors = await prisma.floor.findMany({
+      where: {
+        building_id: Number(building_id),
+      },
+      orderBy: {
+        floor_number: 'asc',
+      },
+    });
+
     res.json({ success: true, floors });
   } catch (err) {
     console.error("getFloorsByBuilding:", err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get a single floor by ID
+// Controller → Get floor by ID
 export const getFloorById = async (req, res) => {
   try {
-    const { id } = req.params; // Extract floor ID from request params
-    const floor = await Floor.findById(id); // Fetch floor by ID
-    if (!floor) return res.status(404).json({ success: false, message: "Floor not found" });
+    const { id } = req.params;
+
+    const floor = await prisma.floor.findUnique({
+      where: {
+        floor_id: Number(id),
+      },
+    });
+
+    if (!floor) {
+      return res.status(404).json({ success: false, message: "Floor not found" });
+    }
 
     res.json({ success: true, floor });
   } catch (err) {
     console.error("getFloorById:", err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Delete a floor by ID
+// Controller → Delete floor by ID
 export const deleteFloor = async (req, res) => {
   try {
-    const { id } = req.params; // Extract floor ID from request params
-    const floor = await Floor.delete(id); // Delete floor from DB
-    if (!floor) return res.status(404).json({ success: false, message: "Floor not found" });
+    const { id } = req.params;
 
-    res.json({ success: true, message: "Floor deleted", floor });
+    const deletedFloor = await prisma.floor.delete({
+      where: {
+        floor_id: Number(id),
+      },
+    });
+
+    res.json({ success: true, message: "Floor deleted successfully", floor: deletedFloor });
   } catch (err) {
     console.error("deleteFloor:", err);
-    res.status(500).json({ success: false });
+    
+    if (err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: "Floor not found" });
+    }
+    
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

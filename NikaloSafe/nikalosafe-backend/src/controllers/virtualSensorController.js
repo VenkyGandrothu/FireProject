@@ -1,132 +1,149 @@
-import { VirtualSensor } from "../models/virtualSensorModel.js";
+import prisma from '../config/prisma.js';
 
-// Register a single virtual sensor
+// Controller → Register virtual sensor (alias for createVirtualSensor)
 export const registerVirtualSensor = async (req, res) => {
   try {
     const { sensor_id, floor_id, virtual_sensor_number, animation_status } = req.body;
 
-    // Validate required fields
     if (!sensor_id || !floor_id || !virtual_sensor_number) {
-      return res.status(400).json({ message: "sensor_id, floor_id, and virtual_sensor_number are required" });
+      return res.status(400).json({ success: false, message: "sensor_id, floor_id, and virtual_sensor_number are required" });
     }
 
-    // Create a new virtual sensor
-    const sensor = await VirtualSensor.create({
-      sensor_id,
-      floor_id,
-      virtual_sensor_number,
-      animation_status: animation_status || "Normal", // default value
+    const virtualSensor = await prisma.virtualSensor.create({
+      data: {
+        sensor_id: Number(sensor_id),
+        floor_id: Number(floor_id),
+        virtual_sensor_number: String(virtual_sensor_number),
+        animation_status: animation_status || "Normal",
+      },
     });
 
-    // Respond with success
-    res.status(201).json({
-      message: "Virtual sensor registered successfully",
-      sensor,
-    });
+    res.status(201).json({ success: true, virtualSensor });
   } catch (err) {
-    console.error("Error in registerVirtualSensor:", err.message);
-    res.status(500).json({ message: "Failed to register virtual sensor" });
+    console.error("registerVirtualSensor:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Bulk register virtual sensors
+// Controller → Register multiple virtual sensors in bulk
 export const registerVirtualSensorsBulk = async (req, res) => {
   try {
-    const sensors = req.body;
+    const { sensors } = req.body;
 
-    // Validate that input is a non-empty array
-    if (!Array.isArray(sensors) || sensors.length === 0) {
-      return res.status(400).json({ message: "Invalid input: array of sensors required" });
+    if (!sensors || sensors.length === 0) {
+      return res.status(400).json({ success: false, message: "Sensors array is required" });
     }
 
-    // Validate each sensor in the array
-    for (const s of sensors) {
-      if (!s.sensor_id || !s.floor_id || !s.virtual_sensor_number) {
-        return res.status(400).json({ message: "Each sensor must have sensor_id, floor_id, and virtual_sensor_number" });
-      }
+    const createdSensors = [];
+    for (const sensor of sensors) {
+      const createdSensor = await prisma.virtualSensor.create({
+        data: {
+          sensor_id: Number(sensor.sensor_id),
+          floor_id: Number(sensor.floor_id),
+          virtual_sensor_number: String(sensor.virtual_sensor_number),
+          animation_status: sensor.animation_status || "Normal",
+        },
+      });
+      createdSensors.push(createdSensor);
     }
 
-    // Insert sensors in bulk
-    const inserted = await VirtualSensor.createBulk(sensors);
-
-    // Respond with success
-    res.status(201).json({
-      message: "Virtual sensors registered successfully",
-      sensors: inserted,
-    });
+    res.status(201).json({ success: true, sensors: createdSensors });
   } catch (err) {
-    console.error("Error in registerVirtualSensorsBulk:", err.message);
-    res.status(500).json({ message: "Failed to register virtual sensors" });
+    console.error("registerVirtualSensorsBulk:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get all virtual sensors
+// Controller → Get all virtual sensors
 export const getAllVirtualSensors = async (req, res) => {
   try {
-    // Fetch all virtual sensors from the database
-    const sensors = await VirtualSensor.findAll();
-    res.json(sensors);
+    const virtualSensors = await prisma.virtualSensor.findMany({
+      orderBy: {
+        virtual_sensor_id: 'asc',
+      },
+    });
+
+    res.json({ success: true, virtualSensors });
   } catch (err) {
-    console.error("Error fetching virtual sensors:", err.message);
-    res.status(500).json({ message: "Failed to fetch virtual sensors" });
+    console.error("getAllVirtualSensors:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get virtual sensor by ID
+// Controller → Get virtual sensor by ID
 export const getVirtualSensorById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch the virtual sensor by its ID
-    const sensor = await VirtualSensor.findById(id);
-
-    // If not found, return 404
-    if (!sensor) {
-      return res.status(404).json({ message: "Virtual sensor not found" });
+    if (!id) {
+      return res.status(400).json({ success: false, message: "virtual_sensor_id is required" });
     }
 
-    res.json(sensor);
+    const virtualSensor = await prisma.virtualSensor.findUnique({
+      where: {
+        virtual_sensor_id: Number(id),
+      },
+    });
+
+    if (!virtualSensor) {
+      return res.status(404).json({ success: false, message: "Virtual sensor not found" });
+    }
+
+    res.json({ success: true, virtualSensor });
   } catch (err) {
-    console.error("Error fetching virtual sensor:", err.message);
-    res.status(500).json({ message: "Failed to fetch virtual sensor" });
+    console.error("getVirtualSensorById:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Delete virtual sensor
-export const deleteVirtualSensor = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Delete the sensor by ID
-    const deleted = await VirtualSensor.delete(id);
-
-    // If not found, return 404
-    if (!deleted) {
-      return res.status(404).json({ message: "Virtual sensor not found" });
-    }
-
-    res.json({ message: "Virtual sensor deleted successfully", sensor: deleted });
-  } catch (err) {
-    console.error("Error deleting virtual sensor:", err.message);
-    res.status(500).json({ message: "Failed to delete virtual sensor" });
-  }
-};
-
-// Get virtual sensors by floor
+// Controller → Get virtual sensors by floor
 export const getVirtualSensorsByFloor = async (req, res) => {
   try {
     const { floorId } = req.params;
 
-    // Validate floorId
     if (!floorId) {
-      return res.status(400).json({ message: "floorId is required" });
+      return res.status(400).json({ success: false, message: "floor_id is required" });
     }
 
-    // Fetch all virtual sensors for the specified floor
-    const sensors = await VirtualSensor.findByFloor(floorId);
-    res.json(sensors);
+    const virtualSensors = await prisma.virtualSensor.findMany({
+      where: {
+        floor_id: Number(floorId),
+      },
+      orderBy: {
+        virtual_sensor_id: 'asc',
+      },
+    });
+
+    res.json({ success: true, virtualSensors });
   } catch (err) {
-    console.error("Error fetching virtual sensors by floor:", err.message);
-    res.status(500).json({ message: "Failed to fetch virtual sensors by floor" });
+    console.error("getVirtualSensorsByFloor:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Controller → Delete virtual sensor by ID
+export const deleteVirtualSensor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: "virtual_sensor_id is required" });
+    }
+
+    const deletedVirtualSensor = await prisma.virtualSensor.delete({
+      where: {
+        virtual_sensor_id: Number(id),
+      },
+    });
+
+    res.json({ success: true, message: "Virtual sensor deleted successfully", virtualSensor: deletedVirtualSensor });
+  } catch (err) {
+    console.error("deleteVirtualSensor:", err);
+    
+    if (err.code === 'P2025') {
+      return res.status(404).json({ success: false, message: "Virtual sensor not found" });
+    }
+    
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["core"]
+}
+
+// Customer model
+model Customer {
+  customer_id        Int     @id @default(autoincrement())
+  customer_name      String
+  customer_email     String  @unique
+  customer_phone     String?
+  customer_address   String?
+  customer_city      String?
+  customer_state     String?
+  customer_country   String?
+
+  // Relations
+  customerBuildings  CustomerBuilding[]
+
+  @@map("customer")
+  @@schema("core")
+}
+
+// Building model
+model Building {
+  building_id        Int     @id @default(autoincrement())
+  building_name      String
+  num_floors         Int?
+  building_address   String?
+  building_city      String?
+  building_state     String?
+  building_country   String?
+
+  // Relations
+  floors             Floor[]
+  customerBuildings  CustomerBuilding[]
+
+  @@map("building")
+  @@schema("core")
+}
+
+// Customer-Building relationship model
+model CustomerBuilding {
+  customer_building_id     Int      @id @default(autoincrement())
+  customer_id              Int
+  building_id              Int
+  days_of_subscription     Int
+  start_date               DateTime @db.Date
+  end_date                 DateTime @db.Date
+  subscription_status      String   @default("inactive")
+
+  // Relations
+  customer                 Customer @relation(fields: [customer_id], references: [customer_id])
+  building                 Building @relation(fields: [building_id], references: [building_id])
+
+  @@map("customer_building")
+  @@schema("core")
+}
+
+// Floor model
+model Floor {
+  floor_id      Int     @id @default(autoincrement())
+  building_id   Int
+  floor_number  Int
+  description   String?
+  num_sensors   Int     @default(0)
+
+  // Relations
+  building      Building         @relation(fields: [building_id], references: [building_id])
+  qrCodes       QRCode[]
+  physicalSensors PhysicalSensor[]
+  virtualSensors VirtualSensor[]
+  exitPaths     ExitPath[]
+
+  @@map("floor")
+  @@schema("core")
+}
+
+// QR Code model
+model QRCode {
+  qr_code_id         Int     @id @default(autoincrement())
+  floor_id           Int
+  qr_code_number     String
+  installed_location String?
+
+  // Relations
+  floor              Floor           @relation(fields: [floor_id], references: [floor_id])
+  linkedQrPaths      LinkedQrPath[]
+
+  @@map("qr_code")
+  @@schema("core")
+}
+
+// Physical Sensor model
+model PhysicalSensor {
+  sensor_id      Int     @id @default(autoincrement())
+  floor_id       Int
+  sensor_number  String
+  location       String?
+  type           String
+  sensor_status  String
+
+  // Relations
+  floor          Floor           @relation(fields: [floor_id], references: [floor_id])
+  virtualSensors VirtualSensor[]
+
+  @@map("physical_sensor")
+  @@schema("core")
+}
+
+// Virtual Sensor model
+model VirtualSensor {
+  virtual_sensor_id     Int     @id @default(autoincrement())
+  sensor_id             Int
+  floor_id              Int
+  virtual_sensor_number String
+  animation_status      String  @default("Normal")
+
+  // Relations
+  physicalSensor        PhysicalSensor @relation(fields: [sensor_id], references: [sensor_id])
+  floor                 Floor          @relation(fields: [floor_id], references: [floor_id])
+
+  @@map("virtual_sensor")
+  @@schema("core")
+}
+
+// Exit Path model
+model ExitPath {
+  path_id      Int     @id @default(autoincrement())
+  floor_id     Int
+  start_point  String
+  end_point    String
+  path_status  String
+  path_length  Float
+
+  // Relations
+  floor        Floor           @relation(fields: [floor_id], references: [floor_id])
+  linkedQrPaths LinkedQrPath[]
+
+  @@map("exit_path")
+  @@schema("core")
+}
+
+// Linked QR Path model (junction table)
+model LinkedQrPath {
+  qr_code_id Int
+  path_id    Int
+
+  // Relations
+  qrCode     QRCode    @relation(fields: [qr_code_id], references: [qr_code_id])
+  exitPath   ExitPath  @relation(fields: [path_id], references: [path_id])
+
+  @@id([qr_code_id, path_id])
+  @@map("linked_qr_path")
+  @@schema("core")
+}

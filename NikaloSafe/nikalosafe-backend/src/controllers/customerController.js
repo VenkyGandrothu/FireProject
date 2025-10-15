@@ -1,4 +1,4 @@
-import { createCustomer, getCustomers } from "../models/customerModel.js";
+import prisma from '../config/prisma.js';
 
 // Controller → Register a new customer
 export async function registerCustomer(req, res) {
@@ -11,21 +11,31 @@ export async function registerCustomer(req, res) {
       return res.status(400).json({ success: false, message: "Name and email required" });
     }
 
-    // Call model function to insert the customer into the database
-    const result = await createCustomer({ name, email, phonenumber, address, city, state, country });
+    // Create customer using Prisma
+    const customer = await prisma.customer.create({
+      data: {
+        customer_name: name,
+        customer_email: email,
+        customer_phone: phonenumber || null,
+        customer_address: address || null,
+        customer_city: city || null,
+        customer_state: state || null,
+        customer_country: country || null,
+      },
+    });
 
     // Return success response with the newly created customer
-    return res.status(201).json({ success: true, customer: result.rows[0] });
+    return res.status(201).json({ success: true, customer });
 
   } catch (err) {
     console.error("registerCustomer:", err);
 
-    // Handle unique constraint violations (PostgreSQL error code 23505)
-    if (err.code === "23505") {
-      if (err.detail.includes("customer_email")) {
+    // Handle unique constraint violations (Prisma error code P2002)
+    if (err.code === "P2002") {
+      if (err.meta?.target?.includes("customer_email")) {
         return res.status(409).json({ success: false, message: "Email already exists" });
       }
-      if (err.detail.includes("customer_phone")) {
+      if (err.meta?.target?.includes("customer_phone")) {
         return res.status(409).json({ success: false, message: "Phone number already exists" });
       }
       return res.status(409).json({ success: false, message: "Duplicate entry" });
@@ -39,11 +49,15 @@ export async function registerCustomer(req, res) {
 // Controller → Get all customers
 export async function getAllCustomers(req, res) {
   try {
-    // Call model function to fetch all customers from the database
-    const result = await getCustomers();
+    // Fetch all customers using Prisma
+    const customers = await prisma.customer.findMany({
+      orderBy: {
+        customer_id: 'desc',
+      },
+    });
 
     // Send success response with the list of customers
-    res.status(200).json({ success: true, customers: result.rows });
+    res.status(200).json({ success: true, customers });
   } catch (err) {
     console.error("getAllCustomers:", err);
 

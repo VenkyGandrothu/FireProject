@@ -1,90 +1,79 @@
-import { query } from "../config/db.js";
+import prisma from '../config/prisma.js';
 
-// Register one or multiple QR codes
+// Controller → Register QR codes (single or multiple)
 export const registerQRCodes = async (req, res) => {
   try {
-    const data = req.body;
+    const qrCodes = req.body;
 
-    // Check if input is an array → bulk insert
-    if (Array.isArray(data)) {
-      if (data.length === 0) {
-        return res.status(400).json({ message: "No QR codes provided" });
+    // Check if it's a single QR code or an array
+    if (Array.isArray(qrCodes)) {
+      // Multiple QR codes
+      if (qrCodes.length === 0) {
+        return res.status(400).json({ success: false, message: "QR codes array is required" });
       }
 
-      // Prepare values array for bulk insert
-      const values = data.map((qr) => [
-        qr.floor_id,
-        qr.qr_code_number,
-        qr.installed_location || null,
-      ]);
+      const createdQRCodes = await prisma.qRCode.createMany({
+        data: qrCodes.map(qr => ({
+          floor_id: Number(qr.floor_id),
+          qr_code_number: String(qr.qr_code_number),
+          installed_location: qr.installed_location || null,
+        })),
+      });
 
-      // Generate SQL placeholders dynamically ($1, $2, ... )
-      const sql = `
-        INSERT INTO qr_code (floor_id, qr_code_number, installed_location)
-        VALUES ${values.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(", ")}
-        RETURNING *;
-      `;
-
-      // Flatten values array for query execution
-      const flatValues = values.flat();
-
-      // Execute query
-      const result = await query(sql, flatValues);
-
-      // Log inserted QR codes to console
-      console.log("Inserted QR codes (bulk):", result.rows);
-
-      return res.status(201).json({ message: "QR codes registered", qrCodes: result.rows });
+      res.status(201).json({ success: true, count: createdQRCodes.count });
     } else {
-      // Single QR code registration
-      const { floor_id, qr_code_number, installed_location } = data;
+      // Single QR code
+      const { floor_id, qr_code_number, installed_location } = qrCodes;
 
-      // Validate required fields
-      if (!floor_id || !qr_code_number) {
-        return res.status(400).json({ message: "floor_id and qr_code_number are required" });
-      }
+      const qrCode = await prisma.qRCode.create({
+        data: {
+          floor_id: Number(floor_id),
+          qr_code_number: String(qr_code_number),
+          installed_location: installed_location || null,
+        },
+      });
 
-      // SQL query to insert a single QR code
-      const sql = `
-        INSERT INTO qr_code (floor_id, qr_code_number, installed_location)
-        VALUES ($1, $2, $3)
-        RETURNING *;
-      `;
-      const result = await query(sql, [floor_id, qr_code_number, installed_location || null]);
-
-      // Log inserted QR code to console
-      console.log("Inserted QR code (single):", result.rows[0]);
-
-      return res.status(201).json({ message: "QR code registered", qrCode: result.rows[0] });
+      res.status(201).json({ success: true, qrCode });
     }
-  } catch (error) {
-    console.error("Error registering QR codes:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (err) {
+    console.error("registerQRCodes:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Fetch all QR codes
+// Controller → Get all QR codes
 export const getQRCodes = async (req, res) => {
   try {
-    const result = await query("SELECT * FROM qr_code");
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching QR codes:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    const qrCodes = await prisma.qRCode.findMany({
+      orderBy: {
+        qr_code_id: 'desc',
+      },
+    });
+
+    res.json({ success: true, qrCodes });
+  } catch (err) {
+    console.error("getQRCodes:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Fetch QR codes by floor id
+// Controller → Get QR codes by floor
 export const getQRCodesByFloor = async (req, res) => {
   try {
-    const floorId = Number(req.params.floor_id);
-    if (!Number.isFinite(floorId) || floorId <= 0) {
-      return res.status(400).json({ message: "Invalid floor id" });
-    }
-    const result = await query("SELECT * FROM qr_code WHERE floor_id = $1 ORDER BY qr_code_id DESC", [floorId]);
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching QR codes by floor:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    const { floor_id } = req.params;
+
+    const qrCodes = await prisma.qRCode.findMany({
+      where: {
+        floor_id: Number(floor_id),
+      },
+      orderBy: {
+        qr_code_id: 'desc',
+      },
+    });
+
+    res.json({ success: true, qrCodes });
+  } catch (err) {
+    console.error("getQRCodesByFloor:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

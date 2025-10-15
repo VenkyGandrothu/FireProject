@@ -1,10 +1,21 @@
-import { Building } from "../models/buildingModel.js"; // Import the Building model
+import prisma from '../config/prisma.js';
 
 // Controller → Register a new building
 export const registerBuilding = async (req, res) => {
   try {
-    // Call the model's create method with request body data
-    const building = await Building.create(req.body);
+    const { building_name, num_floors, building_address, building_city, building_state, building_country } = req.body;
+
+    // Create building using Prisma
+    const building = await prisma.building.create({
+      data: {
+        building_name,
+        num_floors: num_floors ? Number(num_floors) : null,
+        building_address: building_address || null,
+        building_city: building_city || null,
+        building_state: building_state || null,
+        building_country: building_country || null,
+      },
+    });
 
     // Send a success response with the newly created building
     res.status(201).json({ success: true, building });
@@ -20,8 +31,12 @@ export const registerBuilding = async (req, res) => {
 // Controller → Fetch all buildings
 export const getAllBuildings = async (req, res) => {
   try {
-    // Call the model's findAll method to fetch all building records
-    const buildings = await Building.findAll();
+    // Fetch all buildings using Prisma
+    const buildings = await prisma.building.findMany({
+      orderBy: {
+        building_id: 'desc',
+      },
+    });
 
     // Send success response with the list of buildings
     res.json({ success: true, buildings });
