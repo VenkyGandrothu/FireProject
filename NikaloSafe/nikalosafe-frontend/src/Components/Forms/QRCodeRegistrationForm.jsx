@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { API_ENDPOINTS, apiCall } from "../../config/api";
 
 // QRCodeRegistrationForm Component
 export default function QRCodeRegistrationForm({ onSubmit }) {
@@ -14,8 +15,7 @@ export default function QRCodeRegistrationForm({ onSubmit }) {
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/buildings");
-        const data = await res.json();
+        const data = await apiCall(API_ENDPOINTS.BUILDINGS);
         setBuildings(data.buildings || []); // set buildings state
       } catch (err) {
         console.error(err);
@@ -38,10 +38,7 @@ export default function QRCodeRegistrationForm({ onSubmit }) {
 
     try {
       // Fetch floors for the selected building
-      const res = await fetch(
-        `http://localhost:5000/api/floors/building/${building.building_id}`
-      );
-      const data = await res.json();
+        const data = await apiCall(API_ENDPOINTS.FLOORS_BY_BUILDING(building.building_id));
       setFloors(data.floors || []); // update floors list
     } catch (err) {
       console.error(err);

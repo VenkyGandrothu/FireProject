@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { API_ENDPOINTS, apiCall } from "../../config/api";
 
 const CustomerBuildingForm = ({ onSubmit }) => {
   // State for form fields
@@ -25,12 +26,10 @@ const CustomerBuildingForm = ({ onSubmit }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const customerRes = await fetch("http://localhost:5000/api/customers");
-        const customerData = await customerRes.json();
+        const customerData = await apiCall(API_ENDPOINTS.CUSTOMERS);
         setCustomers(customerData.customers || customerData);
 
-        const buildingRes = await fetch("http://localhost:5000/api/buildings");
-        const buildingData = await buildingRes.json();
+        const buildingData = await apiCall(API_ENDPOINTS.BUILDINGS);
         setBuildings(buildingData.buildings || buildingData);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -95,9 +94,8 @@ const CustomerBuildingForm = ({ onSubmit }) => {
 
     // 🔍 Duplicate relation check before submit
     try {
-      const resCheck = await fetch("http://localhost:5000/api/customer-building");
-      const data = await resCheck.json();
-      const existingData = data.relations || []; // safe extraction
+      const data = await apiCall(API_ENDPOINTS.CUSTOMER_BUILDINGS);
+      const existingData = data.customerBuildings || []; // safe extraction
 
       const alreadyExists = existingData.some(
         (record) =>
@@ -136,13 +134,10 @@ const CustomerBuildingForm = ({ onSubmit }) => {
     // Final submission
     setSubmitting(true);
     try {
-      const res = await fetch("http://localhost:5000/api/customer-building/register", {
+      const json = await apiCall(API_ENDPOINTS.CUSTOMER_BUILDING_REGISTER, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Failed to create relation");
 
       toast.success("Customer linked to building successfully");
       // Reset form after successful save

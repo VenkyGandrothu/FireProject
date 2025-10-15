@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { API_ENDPOINTS, apiCall } from "../../config/api";
 
 export default function VirtualSensorRegistrationForm({ onSubmit }) {
   // State to store list of buildings, floors, physical sensors, and virtual sensors
@@ -18,8 +19,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
   useEffect(() => {
     const fetchBuildings = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/buildings");
-        const data = await res.json();
+        const data = await apiCall(API_ENDPOINTS.BUILDINGS);
         // Ensure response is an array
         setBuildings(Array.isArray(data) ? data : data.buildings || []);
       } catch (err) {
@@ -45,10 +45,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
 
     try {
       // Fetch floors for the selected building
-      const res = await fetch(
-        `http://localhost:5000/api/floors/building/${building.building_id}`
-      );
-      const data = await res.json();
+        const data = await apiCall(API_ENDPOINTS.FLOORS_BY_BUILDING(building.building_id));
       // Sort floors by floor number
       const sortedFloors = (Array.isArray(data) ? data : data.floors || []).sort(
         (a, b) => a.floor_number - b.floor_number
@@ -72,10 +69,7 @@ export default function VirtualSensorRegistrationForm({ onSubmit }) {
 
     try {
       // Fetch physical sensors for this floor
-      const res = await fetch(
-        `http://localhost:5000/api/sensors/floor/${floor.floor_id}`
-      );
-      const data = await res.json();
+        const data = await apiCall(API_ENDPOINTS.PHYSICAL_SENSORS_BY_FLOOR(floor.floor_id));
       const sensors = Array.isArray(data) ? data : data.sensors || [];
       setPhysicalSensors(sensors);
 

@@ -15,6 +15,9 @@ import LinkQrToPathsForm from "../Components/Forms/LinkQrToPathsForm";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Import API configuration
+import { API_ENDPOINTS, apiCall } from "../config/api";
+
 function HomePage() {
   // ----------------------
   // API Submission Functions
@@ -22,137 +25,92 @@ function HomePage() {
 
   // Submit new customer data
   const submitCustomer = async (data) => {
-    const res = await fetch("http://localhost:5000/api/customers/register", {
+    return await apiCall(API_ENDPOINTS.CUSTOMER_REGISTER, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to save customer");
-    return json;
   };
 
   // Submit new building data
   const submitBuilding = async (data) => {
-    const res = await fetch("http://localhost:5000/api/buildings/register", {
+    return await apiCall(API_ENDPOINTS.BUILDING_REGISTER, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to save building");
-    return json;
   };
 
   // Submit new floor data
   const submitFloor = async (data) => {
-    const res = await fetch("http://localhost:5000/api/floors/register", {
+    return await apiCall(API_ENDPOINTS.FLOOR_REGISTER, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to save floor");
-    return json;
   };
 
   // Link customer to a building
   const submitCustomerBuilding = async (data) => {
-    const res = await fetch("http://localhost:5000/api/customer-building", {
+    return await apiCall(API_ENDPOINTS.CUSTOMER_BUILDING_REGISTER, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok)
-      throw new Error(json.message || "Failed to link customer and building");
-    return json;
   };
 
   // Submit a single physical sensor
   const submitSensor = async (payload) => {
-    const res = await fetch("http://localhost:5000/api/sensors/register", {
+    return await apiCall(API_ENDPOINTS.PHYSICAL_SENSOR_REGISTER, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        floorId: payload.floorId,
+        floor_id: payload.floorId,
         ...payload.sensors[0],
       }),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to save sensor");
-    return json;
   };
 
   // Submit multiple physical sensors in bulk
   const submitSensorsBulk = async (payload) => {
-    const res = await fetch("http://localhost:5000/api/sensors/bulk", {
+    return await apiCall(API_ENDPOINTS.PHYSICAL_SENSORS_BULK, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to save sensors");
-    return json;
   };
 
   // Submit virtual sensors (single or bulk)
   const submitVirtualSensor = async (data) => {
     const endpoint = Array.isArray(data)
-      ? "http://localhost:5000/api/virtual-sensors/bulk"
-      : "http://localhost:5000/api/virtual-sensors/register";
+      ? API_ENDPOINTS.VIRTUAL_SENSORS_BULK
+      : API_ENDPOINTS.VIRTUAL_SENSOR_REGISTER;
 
-    const res = await fetch(endpoint, {
+    return await apiCall(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok)
-      throw new Error(json.message || "Failed to save virtual sensor(s)");
-    return json;
   };
 
   // Submit exit path data
-const submitExitPath = async (data) => {
-  console.log("Sending Exit Path payload to server:", JSON.stringify(data, null, 2));
-  const res = await fetch("http://localhost:5000/api/exit-paths/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  const json = await res.json();
-  if (!res.ok) {
-    console.error("Server returned error:", res.status, json);
-    throw new Error(json.message || "Failed to save exit path");
-  }
-  console.log("Exit Path saved:", json);
-  return json;
-};
+  const submitExitPath = async (data) => {
+    console.log("Sending Exit Path payload to server:", JSON.stringify(data, null, 2));
+    const result = await apiCall(API_ENDPOINTS.EXIT_PATH_REGISTER, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    console.log("Exit Path saved:", result);
+    return result;
+  };
 
   // Submit QR codes (single or multiple)
   const submitQRCode = async (data) => {
-    const res = await fetch("http://localhost:5000/api/qr-codes/register", {
+    return await apiCall(API_ENDPOINTS.QR_CODE_REGISTER, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to save QR Code(s)");
-    return json;
   };
 
   // Link QR code to exit paths
   const submitLinkQrToPaths = async (payload) => {
-    const res = await fetch("http://localhost:5000/api/linked-qr-path/link", {
+    return await apiCall(API_ENDPOINTS.LINK_QR_TO_PATHS, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.message || "Failed to link QR to paths");
-    return json;
   };
 
   // Smart wrapper to decide between single or bulk physical sensor submission
